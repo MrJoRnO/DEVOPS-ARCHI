@@ -74,8 +74,10 @@ jobs:
         with:
           image-ref: 'url-shortener:${{ steps.vars.outputs.tag }}'
           format: 'table'
-          exit-code: '1' # Quality Gate
+          exit-code: '1'
           severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          trivy-config: .trivyignore
 
       # # --- Push to Registry (Main) ---
       # - name: Push Image

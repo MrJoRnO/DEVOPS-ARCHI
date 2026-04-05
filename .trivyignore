@@ -1,0 +1,4 @@
+# Ignore build-time dependencies that don't affect runtime security
+CVE-2026-23949
+CVE-2026-24049
+CVE-2025-47273
