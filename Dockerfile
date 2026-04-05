@@ -1,21 +1,20 @@
-FROM python:3.9-slim AS builder
+FROM python:3.9-alpine AS builder
+
+RUN apk add --no-cache gcc musl-dev libffi-dev
 WORKDIR /app
 COPY app/requirements.txt .
-
 RUN pip install --target=/app/deps -r requirements.txt
 
-FROM python:3.9-slim
+FROM python:3.9-alpine
 WORKDIR /app
 
-RUN apt-get update && apt-get upgrade -y && \
-    rm -rf /var/lib/apt/lists/*
+RUN apk upgrade --no-cache
 
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+RUN addgroup -S appuser && adduser -S appuser -G appuser
 
 COPY --from=builder /app/deps /app/deps
 COPY app/ .
 
-# הגדרת נתיבים והחלפת משתמש
 ENV PYTHONPATH="/app/deps"
 USER appuser
 
