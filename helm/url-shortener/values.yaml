@@ -1,0 +1,17 @@
+replicaCount: 1
+image:
+  repository: url-shortener
+  pullPolicy: IfNotPresent
+  tag: "" # Overridden by CI
+service:
+  type: ClusterIP
+  port: 80
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+autoscaling:
+  enabled: true
