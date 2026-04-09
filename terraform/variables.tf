@@ -22,6 +22,7 @@ variable "private_subnet_cidrs" {
 variable "cluster_name" {
   description = "Name of the EKS cluster and prefix for related resources"
   type        = string
+  default     = "url-shortener-secure"
 }
 
 variable "admin_ip" {
