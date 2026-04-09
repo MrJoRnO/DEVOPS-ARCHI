@@ -180,6 +180,7 @@ jobs:
           echo "Installing AWS Secrets Provider..."
           helm upgrade --install secrets-provider-aws aws-secrets-manager/secrets-store-csi-driver-provider-aws \
             --namespace kube-system \
+            --set rbac.install=false \
             --wait --timeout 5m
       
       - name: Deploy to EKS
