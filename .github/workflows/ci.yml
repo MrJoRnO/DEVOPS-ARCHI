@@ -138,10 +138,7 @@ jobs:
         run: |
           echo "The IP being passed to Terraform is $TF_VAR_admin_ip"
           cd terraform
-          terraform init \
-            -backend-config="bucket=noam-terraform-state-bucket-v2" \
-            -backend-config="key=eks/terraform.tfstate" \
-            -backend-config="region=eu-central-1"
+          terraform init
           terraform apply -auto-approve
 
 
