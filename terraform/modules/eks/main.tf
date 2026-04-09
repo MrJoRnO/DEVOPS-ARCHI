@@ -3,7 +3,7 @@ module "eks" {
   version = "~> 20.0" # עדכון לגרסה 20 שתומכת ב-Providers החדשים
 
   cluster_name    = var.cluster_name
-  cluster_version = "1.30" 
+  cluster_version = "1.32" 
 
   # בגרסה 20 הפרמטרים מעט שונים:
   vpc_id     = var.vpc_id

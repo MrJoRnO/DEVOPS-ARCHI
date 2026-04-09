@@ -169,4 +169,3 @@ jobs:
             --set image.repository=194636597980.dkr.ecr.eu-central-1.amazonaws.com/url-shortener-repo \
             --set image.tag=${{ github.sha }} \
             --namespace staging
-          kubectl get pods -n staging
