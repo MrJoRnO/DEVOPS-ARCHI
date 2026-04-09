@@ -127,19 +127,21 @@ jobs:
           PUBLIC_IP=$(curl -s https://ifconfig.me)
           echo "RUNNER_IP=${PUBLIC_IP}/32" >> $GITHUB_ENV  
  
+      - name: Debug IP
+        run: echo "The IP being passed to Terraform is $TF_VAR_admin_ip"
+ 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.0
-      
-          # שלב 2: Terraform (אופציונלי בכל ריצה, אבל מומלץ לוודא עקביות)
+        
       - name: Terraform Init & Apply
         run: |
           cd terraform
           terraform init
           terraform apply -auto-approve
 
-      # שלב 3: Docker Build & Push
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
@@ -148,13 +150,13 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: url-shortener-repo
-          IMAGE_TAG: ${{ github.sha }} # שימוש ב-SHA של ה-Git בשביל גרסאות ייחודיות
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
 
-      # שלב 4: Helm Deploy (עם הזרקת האימג' החדש והסודות)
+     
       - name: Deploy to EKS
         run: |
           aws eks update-kubeconfig --region eu-central-1 --name url-shortener-secure
