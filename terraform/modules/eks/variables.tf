@@ -17,3 +17,9 @@ variable "admin_ip" {
   description = "The public IP CIDR allowed to access the EKS API"
   type        = string
 }
+
+variable "secrets_policy_arn" {
+  description = "The ARN of the IAM policy for secrets access"
+  type        = string
+  default     = null
+}

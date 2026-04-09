@@ -27,3 +27,11 @@ module "eks" {
     }
   }
 }
+resource "aws_iam_role_policy_attachment" "nodes_ecr_readonly" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  role       = module.eks.eks_managed_node_groups["main"].iam_role_name
+  }
+resource "aws_iam_role_policy_attachment" "additional_secrets" {
+  policy_arn = var.secrets_policy_arn
+  role       = module.eks.eks_managed_node_groups["main"].iam_role_name
+}
