@@ -158,18 +158,26 @@ jobs:
 
       - name: Install Secrets Store CSI Driver
         run: |
-          helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
-          helm repo add aws-secrets-manager https://aws.github.io/secrets-store-csi-driver-provider-aws
+          helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts --force-update
+          helm repo add aws-secrets-manager https://aws.github.io/secrets-store-csi-driver-provider-aws --force-update
+          
+          echo "Updating repositories..."
           helm repo update
           
-          
+          echo "Installing CSI Driver..."
+          helm upgrade --install csi-secrets-store secrets-store-csi-driver/secrets-store-csi-driver \
+            --namespace kube-system \
+            --set syncSecret.enabled=true \
+            --wait --timeout 5m
+
           helm upgrade --install csi-secrets-store secrets-store-csi-driver/secrets-store-csi-driver \
             --namespace kube-system \
             --set syncSecret.enabled=true
             
-          
+          echo "Installing AWS Secrets Provider..."
           helm upgrade --install secrets-provider-aws aws-secrets-manager/secrets-store-csi-driver-provider-aws \
-            --namespace kube-system
+            --namespace kube-system \
+            --wait --timeout 5m
       
       - name: Deploy to EKS
         run: |
