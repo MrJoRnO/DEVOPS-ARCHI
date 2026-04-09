@@ -170,6 +170,8 @@ jobs:
           echo "Updating repositories..."
           helm repo update
           
+          kubectl delete serviceaccount secrets-store-csi-driver -n kube-system || true
+
           echo "Installing CSI Driver..."
           helm install csi-secrets-store secrets-store-csi-driver/secrets-store-csi-driver \
             --namespace kube-system \
