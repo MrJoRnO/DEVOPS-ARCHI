@@ -1,6 +1,6 @@
-provider "aws" {
-  region = var.region
-}
+# provider "aws" {
+#   region = var.region
+# }
 
 # קריאה למודול הרשת המקומי
 module "network" {
