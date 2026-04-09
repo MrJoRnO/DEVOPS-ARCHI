@@ -173,12 +173,18 @@ jobs:
             --set enableSecretRotation=true \
             --wait
       
-      - name: Deploy to EKS
+      - name: Deploy Application
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: url-shortener-repo
         run: |
           aws eks update-kubeconfig --region eu-central-1 --name url-shortener-secure
+          
           helm upgrade --install staging-app ./helm/url-shortener \
             -f ./helm/url-shortener/values.yaml \
             -f ./helm/url-shortener/values-staging.yaml \
-            --set image.repository=194636597980.dkr.ecr.eu-central-1.amazonaws.com/url-shortener-repo \
+            --set image.repository=${{ env.ECR_REPOSITORY }} \
             --set image.tag=${{ github.sha }} \
-            --namespace staging
+            --namespace staging \
+            --create-namespace \
+            --wait --timeout 5m
