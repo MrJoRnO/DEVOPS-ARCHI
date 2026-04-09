@@ -160,27 +160,18 @@ jobs:
         run: |
           aws eks update-kubeconfig --region eu-central-1 --name url-shortener-secure
           
-          kubectl delete secret -n kube-system -l owner=helm,name=csi-secrets-store || true
-          kubectl delete secret -n kube-system -l owner=helm,name=secrets-provider-aws
+          helm uninstall csi-secrets-store --namespace kube-system || true
+          helm uninstall secrets-provider-aws --namespace kube-system || true
           kubectl delete sa secrets-store-csi-driver -n kube-system || true
-          
+                    
           helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts --force-update
-          helm repo add aws-secrets-manager https://aws.github.io/secrets-store-csi-driver-provider-aws --force-update
-          
-          echo "Updating repositories..."
           helm repo update
           
-
-          echo "Installing CSI Driver..."
-          helm install csi-secrets-store secrets-store-csi-driver/secrets-store-csi-driver \
+          helm upgrade --install csi-secrets-store secrets-store-csi-driver/secrets-store-csi-driver \
             --namespace kube-system \
             --set syncSecret.enabled=true \
-            --wait 
-            
-          echo "Installing AWS Secrets Provider..."
-          helm install secrets-provider-aws aws-secrets-manager/secrets-store-csi-driver-provider-aws \
-            --namespace kube-system \
-            --wait 
+            --set enableSecretRotation=true \
+            --wait
       
       - name: Deploy to EKS
         run: |
