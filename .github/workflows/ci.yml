@@ -180,10 +180,11 @@ jobs:
         run: |
           aws eks update-kubeconfig --region eu-central-1 --name url-shortener-secure
           
+          # שים לב לשינוי ב-image.repository - מחברים את ה-registry וה-repo
           helm upgrade --install staging-app ./helm/url-shortener \
             -f ./helm/url-shortener/values.yaml \
             -f ./helm/url-shortener/values-staging.yaml \
-            --set image.repository=${{ env.ECR_REPOSITORY }} \
+            --set image.repository=${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }} \
             --set image.tag=${{ github.sha }} \
             --namespace staging \
             --create-namespace \
