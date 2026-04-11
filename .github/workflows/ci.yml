@@ -101,12 +101,12 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feature/initial-setup ]
   pull_request:
     branches: [ main ]
 
 jobs:
-  deploy:
+  build-and-deploy-infra:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -132,13 +132,24 @@ jobs:
         with:
           terraform_version: 1.7.0
         
-      - name: Terraform Init & Apply
+      - name: Terraform Init & Workspace
         env:
           TF_VAR_admin_ip: ${{ env.RUNNER_IP }}
         run: |
           echo "The IP being passed to Terraform is $TF_VAR_admin_ip"
           cd terraform
           terraform init
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            WORKSPACE="prod"
+          else
+            WORKSPACE="stage"
+          fi
+          terraform workspace select $WORKSPACE
+          terraform apply -auto-approve
+
+      - name: Terraform Apply
+        run: |
+          cd terraform
           terraform apply -auto-approve
 
 
@@ -159,10 +170,6 @@ jobs:
       - name: Install Secrets Store CSI Driver
         run: |
           aws eks update-kubeconfig --region eu-central-1 --name url-shortener-secure
-          
-          helm uninstall csi-secrets-store --namespace kube-system || true
-          helm uninstall secrets-provider-aws --namespace kube-system || true
-          kubectl delete sa secrets-store-csi-driver -n kube-system || true
                     
           helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts --force-update
           helm repo update
@@ -172,14 +179,31 @@ jobs:
             --set syncSecret.enabled=true \
             --set enableSecretRotation=true \
             --wait
-      
-      - name: Deploy Application
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: build-and-deploy-infra
+    if: github.ref == 'refs/heads/feature/initial-setup'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Update Kubeconfig
+        run: aws eks update-kubeconfig --region eu-central-1 --name url-shortener-secure
+
+      - name: Deploy to Staging with Helm
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: url-shortener-repo
         run: |
-          aws eks update-kubeconfig --region eu-central-1 --name url-shortener-secure
-          
           helm upgrade --install staging-app ./helm/url-shortener \
             -f ./helm/url-shortener/values.yaml \
             -f ./helm/url-shortener/values-staging.yaml \
@@ -188,3 +212,37 @@ jobs:
             --namespace staging \
             --create-namespace \
             --wait --timeout 5m
+  
+  deploy-prod:
+    name: Deploy to Production
+    needs: build-and-deploy-infra
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Update Kubeconfig
+        run: aws eks update-kubeconfig --region eu-central-1 --name url-shortener-secure
+
+      - name: Deploy to Production with Helm
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: url-shortener-repo
+        run: |
+          helm upgrade --install prod-app ./helm/url-shortener \
+            -f ./helm/url-shortener/values.yaml \
+            -f ./helm/url-shortener/values-production.yaml \
+            --set image.repository=${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }} \
+            --set image.tag=${{ github.sha }}
+            --namespace prod \
+            --create-namespace \
+            --wait --timeout 5m        

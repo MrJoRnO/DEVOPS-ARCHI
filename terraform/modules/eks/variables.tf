@@ -23,3 +23,10 @@ variable "secrets_policy_arn" {
   type        = string
   default     = null
 }
+variable "instance_types" {
+  type    = list(string)
+}
+
+variable "desired_size" {
+  type    = number
+}
