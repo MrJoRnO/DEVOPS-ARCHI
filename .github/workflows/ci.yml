@@ -132,7 +132,7 @@ jobs:
         with:
           terraform_version: 1.7.0
         
-      - name: Terraform Init & Workspace
+      - name: Terraform Init & Workspace & Apply
         env:
           TF_VAR_admin_ip: ${{ env.RUNNER_IP }}
         run: |
@@ -147,12 +147,7 @@ jobs:
           terraform workspace select $WORKSPACE
           terraform apply -auto-approve
 
-      - name: Terraform Apply
-        run: |
-          cd terraform
-          terraform apply -auto-approve
-
-
+      
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
