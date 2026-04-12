@@ -108,6 +108,8 @@ on:
 jobs:
   build-and-deploy-infra:
     runs-on: ubuntu-latest
+    outputs:
+      ecr_registry: ${{ steps.login-ecr.outputs.registry }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -185,7 +187,7 @@ jobs:
   deploy-staging:
     name: Deploy to Staging
     needs: build-and-deploy-infra
-    if: github.ref == 'refs/heads/feature/initial-setup'
+    if: github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
