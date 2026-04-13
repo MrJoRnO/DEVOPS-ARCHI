@@ -216,6 +216,7 @@ jobs:
             exit 1
           fi
 
+
       - name: Update Kubeconfig
         run: aws eks update-kubeconfig --region eu-central-1 --name url-shortener-stage
 
