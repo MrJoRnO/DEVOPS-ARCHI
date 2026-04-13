@@ -10,11 +10,11 @@ module "github_oidc_role" {
   name = "github-actions-eks-deployer"
 
   subjects = [
-    "repo:MrJoRnO/CloudRoute:*" 
+    "repo:MrJoRnO/CloudRoute:*"
   ]
 
   policies = {
-    EKS_Access = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+    Admin = "arn:aws:iam::aws:policy/AdministratorAccess"
   }
 }
 
