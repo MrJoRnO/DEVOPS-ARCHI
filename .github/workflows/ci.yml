@@ -104,7 +104,6 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-
 jobs:
   build-and-deploy-infra:
     runs-on: ubuntu-latest
@@ -112,25 +111,23 @@ jobs:
       ecr_registry: ${{ steps.login-ecr.outputs.registry }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4 
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: eu-central-1
       
-   
       - name: Get GitHub Runner Public IP
         id: get_ip
         run: |
-          # משיכת ה-IP הציבורי של המכונה הנוכחית
           export PUBLIC_IP=$(curl -s https://ifconfig.me)
           echo "RUNNER_IP=${PUBLIC_IP}/32" >> $GITHUB_ENV
  
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v3 
         with:
           terraform_version: 1.7.0
         
@@ -138,7 +135,6 @@ jobs:
         env:
           TF_VAR_admin_ip: ${{ env.RUNNER_IP }}
         run: |
-          echo "The IP being passed to Terraform is $TF_VAR_admin_ip"
           cd terraform
           terraform init
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
@@ -146,7 +142,7 @@ jobs:
           else
             WORKSPACE="stage"
           fi
-          terraform workspace select $WORKSPACE
+          terraform workspace select $WORKSPACE || terraform workspace new $WORKSPACE
           terraform apply -auto-approve
 
       - name: Login to Amazon ECR
@@ -163,17 +159,10 @@ jobs:
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          echo "IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
 
       - name: Install Secrets Store CSI Driver
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            CLUSTER_NAME="url-shortener-prod"
-          else
-            CLUSTER_NAME="url-shortener-stage"
-          fi
-          
-          echo "Connecting to cluster: $CLUSTER_NAME"
+          CLUSTER_NAME=${{ github.ref == 'refs/heads/main' && 'url-shortener-prod' || 'url-shortener-stage' }}
           aws eks update-kubeconfig --region eu-central-1 --name $CLUSTER_NAME
                     
           helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts --force-update
@@ -199,39 +188,47 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-      
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.7.0
-      
-      - name: Authorize Runner IP 
-        run: |  
+          aws-region: eu-central-1
+
+      - name: Authorize Runner IP in Security Group
+        run: |
           RUNNER_IP=$(curl -s https://ifconfig.me)
-          echo "Runner IP is $RUNNER_IP"
-          cd terraform
-          terraform init
-          terraform workspace select stage
-          terraform apply -auto-approve
+          CLUSTER_NAME="url-shortener-stage"
+
+          SG_ID=$(aws ec2 describe-security-groups \
+            --filters "Name=tag:aws:eks:cluster-name,Values=$CLUSTER_NAME" \
+            --query "SecurityGroups[0].GroupId" --output text)
+
+          if [ "$SG_ID" != "None" ] && [ -n "$SG_ID" ]; then
+            aws ec2 authorize-security-group-ingress \
+              --group-id $SG_ID --protocol tcp --port 443 --cidr ${RUNNER_IP}/32 || echo "Already authorized"
+          else
+            echo "Error: SG not found" && exit 1
+          fi
 
       - name: Update Kubeconfig
         run: aws eks update-kubeconfig --region eu-central-1 --name url-shortener-stage
 
       - name: Deploy to Staging with Helm
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: url-shortener-stage-repo
         run: |
+          REGISTRY=${{ needs.build-and-deploy-infra.outputs.ecr_registry }}
+          REPOSITORY="url-shortener-stage-repo"
+          
           helm upgrade --install staging-app ./helm/url-shortener \
             -f ./helm/url-shortener/values.yaml \
             -f ./helm/url-shortener/values-staging.yaml \
-            --set image.repository=${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }} \
+            --set image.repository=$REGISTRY/$REPOSITORY \
             --set image.tag=${{ github.sha }} \
             --namespace staging \
-            --create-namespace \
-            --wait --timeout 5m
-  
+            --create-namespace --wait --timeout 5m
+
+      - name: Revoke Runner IP (Cleanup)
+        if: always()
+        run: |
+          RUNNER_IP=$(curl -s https://ifconfig.me)
+          SG_ID=$(aws ec2 describe-security-groups --filters "Name=tag:aws:eks:cluster-name,Values=url-shortener-stage" --query "SecurityGroups[0].GroupId" --output text)
+          aws ec2 revoke-security-group-ingress --group-id $SG_ID --protocol tcp --port 443 --cidr ${RUNNER_IP}/32 || true
+
   deploy-prod:
     name: Deploy to Production
     needs: build-and-deploy-infra
