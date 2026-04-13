@@ -27,20 +27,10 @@ module "eks" {
 
 
   cluster_endpoint_public_access       = true
-  cluster_endpoint_public_access_cidrs = null
+  cluster_endpoint_public_access_cidrs = [var.admin_ip]
   enable_cluster_creator_admin_permissions = true
-  
-  cluster_security_group_additional_rules = {
-    ingress_admin_ip = {
-      description = "Allow Runner IP to communicate with API Server"
-      protocol    = "tcp"
-      from_port   = 443
-      to_port     = 443
-      type        = "ingress"
-      cidr_blocks = [var.admin_ip] 
-    }
-  }
-  
+
+
   eks_managed_node_groups = {
     main = {
       instance_types = var.instance_types 
@@ -57,14 +47,4 @@ resource "aws_iam_role_policy_attachment" "nodes_ecr_readonly" {
 resource "aws_iam_role_policy_attachment" "additional_secrets" {
   policy_arn = var.secrets_policy_arn
   role       = module.eks.eks_managed_node_groups["main"].iam_role_name
-}
-
-resource "aws_security_group_rule" "runner_access" {
-  type              = "ingress"
-  from_port         = 443
-  to_port           = 443
-  protocol          = "tcp"
-  cidr_blocks       = [var.admin_ip]
-  security_group_id = module.eks.cluster_primary_security_group_id
-  description       = "Allow GitHub Runner access to API server"
 }

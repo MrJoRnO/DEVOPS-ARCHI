@@ -28,6 +28,5 @@ variable "cluster_name" {
 variable "admin_ip" {
   description = "Your public IP address in CIDR notation for API access"
   type        = string
-  default     = "0.0.0.0/32"
 }
 
