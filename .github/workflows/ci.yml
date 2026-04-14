@@ -223,12 +223,18 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-eks-deployer
           aws-region: eu-central-1
 
+      - name: Login to Amazon ECR
+        id: login-ecr-prod 
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: 'true'
+
       - name: Update Kubeconfig
         run: aws eks update-kubeconfig --region eu-central-1 --name url-shortener-prod
 
       - name: Deploy to Production with Helm
         run: |
-          REGISTRY=${{ needs.build-and-deploy-infra.outputs.ecr_registry }}
+          REGISTRY="${{ steps.login-ecr-prod.outputs.registry }}"
           REPOSITORY="url-shortener-prod-repo"
           
           helm upgrade --install prod-app ./helm/url-shortener \
