@@ -1,11 +1,9 @@
 module "github_oidc_provider" {
-  count   = terraform.workspace == "stage" ? 1 : 0
   source  = "terraform-aws-modules/iam/aws//modules/iam-github-oidc-provider"
   version = "~> 5.0"
 }
 
 module "github_oidc_role" {
-  count   = terraform.workspace == "stage" ? 1 : 0
   source  = "terraform-aws-modules/iam/aws//modules/iam-github-oidc-role"
   version = "~> 5.0"
 
