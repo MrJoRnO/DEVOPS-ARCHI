@@ -5,7 +5,7 @@ module "github_oidc_role" {
 
   name = "github-actions-eks-deployer"
   
-  audience = ["sts.amazonaws.com"]
+  audience = "sts.amazonaws.com"
   
   subjects = ["repo:MrJoRnO/CloudRoute:*"]
   
@@ -16,7 +16,7 @@ module "github_oidc_role" {
 
 data "aws_iam_role" "github_role" {
   name = "github-actions-eks-deployer"
-  
+
   depends_on = [module.github_oidc_role]
 }
 
