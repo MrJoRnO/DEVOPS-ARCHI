@@ -28,7 +28,7 @@ module "eks" {
 
   cluster_endpoint_public_access       = true
   cluster_endpoint_public_access_cidrs = ["0.0.0.0/0"]
-  enable_cluster_creator_admin_permissions = false
+  enable_cluster_creator_admin_permissions = true
 
 
   eks_managed_node_groups = {
@@ -49,7 +49,6 @@ module "eks" {
     cidr_blocks      = ["0.0.0.0/0"] 
   }
 }
-
 }
 resource "aws_iam_role_policy_attachment" "nodes_ecr_readonly" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
