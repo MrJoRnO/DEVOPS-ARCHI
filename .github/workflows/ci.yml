@@ -181,6 +181,9 @@ jobs:
       - name: Debug and Install Istio Gateway
         run: |
           # התקנה ללא המתנה
+          helm repo add istio https://istio-release.storage.googleapis.com/charts
+          helm repo add oauth2-proxy https://oauth2-proxy.github.io/manifests
+          helm repo update
           helm upgrade --install istio-ingressgateway istio/gateway -n istio-system \
             --set service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-type"="nlb" \
             --set service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-scheme"="internet-facing" \
