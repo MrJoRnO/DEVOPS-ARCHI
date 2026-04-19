@@ -181,13 +181,13 @@ jobs:
             --set service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-type"="external" \
             --set service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-nlb-target-type"="instance" \
             --set service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-scheme"="internet-facing" \
-            --wait
+            --wait --timeout 15m
           
           # Prometheus & Grafana
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo update
           helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
-            --namespace monitoring --create-namespace --wait
+            --namespace monitoring --create-namespace --wait --timeout 15m
 
   deploy-staging:
     name: Deploy to Staging
@@ -231,7 +231,7 @@ jobs:
             --set image.tag=${{ github.sha }} \
             --set secrets.aws_secret_name=$LATEST_SECRET \
             --namespace staging \
-            --create-namespace --wait --timeout 5m
+            --create-namespace --wait --timeout 15m
       
       - name: Get NLB Address
         run: |
