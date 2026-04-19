@@ -170,10 +170,19 @@ jobs:
             --wait
 
       # --- ISTIO & MONITORING INSTALLATION ---
-      - name: Install Istio & Monitoring
+      - name: Generate SSL Certificate
+        run: |
+          openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -keyout tls.key -out tls.crt \
+            -subj "/CN=url-shortener.local"
+          kubectl create namespace istio-system --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret tls istio-ingressgateway-certs --key tls.key --cert tls.crt -n istio-system --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Install Istio & OAuth2 Proxy
         run: |
           # Istio
           helm repo add istio https://istio-release.storage.googleapis.com/charts
+          helm repo add oauth2-proxy https://oauth2-proxy.github.io/manifests
           helm repo update
           helm upgrade --install istio-base istio/base -n istio-system --create-namespace
           helm upgrade --install istiod istio/istiod -n istio-system --wait
@@ -182,12 +191,30 @@ jobs:
             --set service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-nlb-target-type"="instance" \
             --set service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-scheme"="internet-facing" \
             --wait --timeout 15m
-          
-          # Prometheus & Grafana
+
+          # OAuth2 Proxy
+          helm upgrade --install oauth2-proxy oauth2-proxy/oauth2-proxy \
+            --namespace istio-system \
+            --set config.clientID=${{ secrets.OAUTH_CLIENT_ID }} \
+            --set config.clientSecret=${{ secrets.OAUTH_CLIENT_SECRET }} \
+            --set config.cookieSecret=${{ secrets.OAUTH_COOKIE_SECRET }} \
+            --set extraArgs.provider=github \
+            --set extraArgs.github-user="MrJoRnO" \
+            --set extraArgs.upstream=file:///dev/null \
+            --set extraArgs.http-address=0.0.0.0:4180 --wait
+
+      - name: Install Monitoring Stack
+        run: |
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo update
+          
+          LB_HOST=$(kubectl get svc istio-ingressgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          
           helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
-            --namespace monitoring --create-namespace --wait --timeout 15m
+            --namespace monitoring --create-namespace \
+            --set grafana."grafana\.ini".server.root_url="https://$LB_HOST/grafana/" \
+            --set grafana."grafana\.ini".server.serve_from_sub_path=true \
+            --wait --timeout 15m
 
   deploy-staging:
     name: Deploy to Staging
