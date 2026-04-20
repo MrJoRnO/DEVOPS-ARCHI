@@ -184,15 +184,20 @@ jobs:
           helm repo add istio https://istio-release.storage.googleapis.com/charts
           helm repo add oauth2-proxy https://oauth2-proxy.github.io/manifests
           helm repo update
+          # Base
           helm upgrade --install istio-base istio/base -n istio-system --create-namespace
-          helm upgrade --install istiod istio/istiod -n istio-system --wait
+          # Istiod Extension Provider
+          helm upgrade --install istiod istio/istiod -n istio-system --wait \
+            --set meshConfig.extensionProviders[0].name="oauth2-proxy" \
+            --set meshConfig.extensionProviders[0].envoyExtAuthzHttp.service="oauth2-proxy.istio-system.svc.cluster.local" \
+            --set meshConfig.extensionProviders[0].envoyExtAuthzHttp.port="4180"
+          # Gateway
           helm upgrade --install istio-ingressgateway istio/gateway -n istio-system \
             --set service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-type"="nlb" \
             --set service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-scheme"="internet-facing" \
             --set service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-nlb-target-type"="instance" \
             --wait --timeout 15m
-          
-          # OAuth2 Proxy
+          # 4. OAuth2 Proxy
           helm upgrade --install oauth2-proxy oauth2-proxy/oauth2-proxy \
             --namespace istio-system \
             --set config.clientID=${{ secrets.OAUTH_CLIENT_ID }} \
@@ -200,9 +205,11 @@ jobs:
             --set config.cookieSecret=${{ secrets.OAUTH_COOKIE_SECRET }} \
             --set extraArgs.provider=github \
             --set extraArgs.github-user="MrJoRnO" \
+            --set extraArgs.email-domain="*" \
             --set extraArgs.upstream=file:///dev/null \
-            --set extraArgs.http-address=0.0.0.0:4180 
-
+            --set extraArgs.http-address=0.0.0.0:4180 \
+            --set extraArgs.cookie-secure=false
+      
       - name: Install Monitoring Stack
         run: |
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
