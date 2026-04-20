@@ -12,7 +12,18 @@ spec:
       name: http
       protocol: HTTP
     hosts:
+    - "*"
+    tls:
+      httpsRedirect: true
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    hosts:
     - "*" 
+    tls:
+      mode: SIMPLE
+      credentialName: istio-ingressgateway-certs 
 ---
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
@@ -25,8 +36,24 @@ spec:
   gateways:
   - {{ include "url-shortener.fullname" . }}-gateway
   http:
+  - match:
+    - uri:
+        prefix: /oauth2
+    route:
+    - destination:
+        host: oauth2-proxy.istio-system.svc.cluster.local
+        port:
+          number: 4180
+  - match:
+    - uri:
+        prefix: /grafana
+    route:
+    - destination:
+        host: monitoring-grafana.monitoring.svc.cluster.local
+        port:
+          number: 80
   - route:
     - destination:
-        host: {{ include "url-shortener.fullname" . }} 
+        host: {{ include "url-shortener.fullname" . }}
         port:
           number: {{ .Values.service.port }}
