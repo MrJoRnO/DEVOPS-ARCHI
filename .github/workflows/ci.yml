@@ -216,8 +216,11 @@ jobs:
           
       - name: Install Monitoring Stack
         run: |
+          kubectl delete authorizationpolicy require-oauth2 -n istio-system --ignore-not-found
+          
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo update
+          
           LB_HOST=""
           while [ -z "$LB_HOST" ]; do
             echo "Waiting for NLB DNS..."
@@ -225,11 +228,15 @@ jobs:
             [ -z "$LB_HOST" ] && sleep 5
           done
           echo "NLB Host is: $LB_HOST"
+
           helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
             --namespace monitoring --create-namespace \
             --set grafana."grafana\.ini".server.root_url="https://$LB_HOST/grafana/" \
             --set grafana."grafana\.ini".server.serve_from_sub_path=true \
             --set grafana."grafana\.ini".server.domain="$LB_HOST" \
+
+            --set grafana."grafana\.ini"."auth\.proxy".enabled=false \
+            --set grafana."grafana\.ini"."auth".disable_login_form=false \
             --wait
 
   deploy-staging:
