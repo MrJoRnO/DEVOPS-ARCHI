@@ -206,7 +206,7 @@ jobs:
             --set config.clientSecret=${{ secrets.OAUTH_CLIENT_SECRET }} \
             --set config.cookieSecret=${{ secrets.OAUTH_COOKIE_SECRET }} \
             --set extraArgs.provider=github \
-            --set extraArgs.github-user="MrJoRnO" \
+            --set extraArgs.github-user="" \
             --set extraArgs.email-domain="*" \
             --set extraArgs.redirect-url="https://$LB_HOST/oauth2/callback" \
             --set extraArgs.cookie-domain="$LB_HOST" \
